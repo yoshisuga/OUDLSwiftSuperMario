@@ -15,6 +15,8 @@
 		ADA2529D19A1A80C00E23325 /* SuperMarioEndlessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA2529C19A1A80C00E23325 /* SuperMarioEndlessTests.swift */; };
 		ADA252A719A1B82000E23325 /* jump.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADA252A619A1B82000E23325 /* jump.wav */; };
 		ADA252A919A1BA6200E23325 /* maintheme.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = ADA252A819A1BA6200E23325 /* maintheme.mp3 */; };
+		ADA252B319A34F3100E23325 /* die.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADA252B119A34F3100E23325 /* die.wav */; };
+		ADA252B419A34F3100E23325 /* fire.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADA252B219A34F3100E23325 /* fire.wav */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +42,8 @@
 		ADA2529C19A1A80C00E23325 /* SuperMarioEndlessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperMarioEndlessTests.swift; sourceTree = "<group>"; };
 		ADA252A619A1B82000E23325 /* jump.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = jump.wav; sourceTree = "<group>"; };
 		ADA252A819A1BA6200E23325 /* maintheme.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = maintheme.mp3; sourceTree = "<group>"; };
+		ADA252B119A34F3100E23325 /* die.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = die.wav; sourceTree = "<group>"; };
+		ADA252B219A34F3100E23325 /* fire.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = fire.wav; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +92,8 @@
 				ADA2529019A1A80C00E23325 /* Images.xcassets */,
 				ADA252A619A1B82000E23325 /* jump.wav */,
 				ADA252A819A1BA6200E23325 /* maintheme.mp3 */,
+				ADA252B119A34F3100E23325 /* die.wav */,
+				ADA252B219A34F3100E23325 /* fire.wav */,
 				ADA2528319A1A80C00E23325 /* Supporting Files */,
 			);
 			path = SuperMarioEndless;
@@ -198,9 +204,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ADA252B419A34F3100E23325 /* fire.wav in Resources */,
 				ADA252A719A1B82000E23325 /* jump.wav in Resources */,
 				ADA2529119A1A80C00E23325 /* Images.xcassets in Resources */,
 				ADA2528F19A1A80C00E23325 /* Main.storyboard in Resources */,
+				ADA252B319A34F3100E23325 /* die.wav in Resources */,
 				ADA252A919A1BA6200E23325 /* maintheme.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -11,6 +11,14 @@ import SpriteKit
 enum PlayerAction: String {
     case RUNNING = "running"
     case JUMPING = "jumping"
+    case DYING = "die"
+}
+
+enum ColliderType: UInt32 {
+    case Mario = 1
+    case Enemy = 2
+    case Ground = 4
+    case Nothing = 8
 }
 
 class Player: SKSpriteNode {
@@ -45,6 +53,11 @@ class Player: SKSpriteNode {
 
         physicsBody = SKPhysicsBody(circleOfRadius: self.size.height / 2)
         physicsBody.dynamic = true
+        physicsBody.angularDamping = 0.0
+
+        physicsBody.categoryBitMask = ColliderType.Mario.toRaw()
+        physicsBody.collisionBitMask = ColliderType.Ground.toRaw() | ColliderType.Enemy.toRaw()
+        physicsBody.contactTestBitMask = ColliderType.Enemy.toRaw()
         
         self.runAction(runningAction, withKey: PlayerAction.RUNNING.toRaw())
 
@@ -61,6 +74,29 @@ class Player: SKSpriteNode {
         }
     }
     
+    func die() {
+        removeActionForKey(PlayerAction.DYING.toRaw())
+        physicsBody.collisionBitMask = ColliderType.Nothing.toRaw()
+        let moveUp = SKAction.moveByX(0, y: 20.0, duration: 1.0)
+        let fallDown = SKAction.moveToY(-20, duration: 2.0)
+        // play death animation
+        runAction(SKAction.animateWithTextures([SKTexture(imageNamed: "death")], timePerFrame: 0.1), withKey: PlayerAction.DYING.toRaw())
+        // play sound
+        let deathSound = SKAction.playSoundFileNamed("die.wav", waitForCompletion: false)
+        runAction(SKAction.sequence([deathSound, SKAction.waitForDuration(0.5)]))
+        // disable collisions
+        
+        // move
+        runAction(SKAction.sequence([moveUp, fallDown]))
+    }
+    
+    func resetStatus() {
+        removeActionForKey(PlayerAction.DYING.toRaw())
+        removeActionForKey(PlayerAction.JUMPING.toRaw())
+        physicsBody.collisionBitMask = ColliderType.Ground.toRaw() | ColliderType.Enemy.toRaw()
+        runAction(runningAction, withKey: PlayerAction.RUNNING.toRaw())
+    }
+    
     func isJumping() -> Bool {
         return physicsBody.velocity.dy != 0.0
     }
@@ -72,14 +108,54 @@ class Player: SKSpriteNode {
     }
 }
 
-class GameScene: SKScene {
+class Enemy: SKSpriteNode {
+    
+    var moveAndRemoveAction: SKAction!
+    
+    required init(coder: NSCoder) {
+        fatalError("NSCoding not supported")
+    }
+    
+    init(textureFilename: String, screenWidth: Float, speedMultiplier: Float = 0.01) {
+        println("speed multiplier = \(speedMultiplier)")
+        let texture = SKTexture(imageNamed: "bullet")
+        texture.filteringMode = SKTextureFilteringMode.Linear
+        super.init(texture: texture, color: nil, size: texture.size())
+        setScale(2.0)
+        let moveDistance = CGFloat(screenWidth) + (2 * texture.size().width);
+        let move = SKAction.moveByX(-moveDistance, y: 0, duration: NSTimeInterval(CGFloat(speedMultiplier) * moveDistance))
+        let remove = SKAction.removeFromParent()
+        moveAndRemoveAction = SKAction.sequence([move, remove])
+
+        physicsBody = SKPhysicsBody(rectangleOfSize: self.size)
+        physicsBody.dynamic = false
+        physicsBody.categoryBitMask = ColliderType.Enemy.toRaw()
+        physicsBody.collisionBitMask = ColliderType.Mario.toRaw()
+        physicsBody.contactTestBitMask = ColliderType.Mario.toRaw()
+    }
+    
+    func move() {
+        runAction(SKAction.playSoundFileNamed("fire.wav", waitForCompletion: true))
+        self.runAction(moveAndRemoveAction)
+    }
+    
+}
+
+class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var mario: Player!
+    
+    
+    var moveBlockAndRemove: SKAction!
+    
+    let skyColor = UIColor(red: 107.0 / 255.0, green: 140.0 / 255.0, blue: 1.0, alpha: 1.0)
     
     override func didMoveToView(view: SKView) {
         /* Setup your scene here */
         self.physicsWorld.gravity = CGVectorMake(0, -5)
-        self.backgroundColor = UIColor(red: 107.0 / 255.0, green: 140.0 / 255.0, blue: 1.0, alpha: 1.0)
+        self.backgroundColor = skyColor
+        
+        self.physicsWorld.contactDelegate = self
         
         mario = Player(textureFilenames: ["mario-stand","mario-run1","mario-run2","mario-run3"])
         mario.position = CGPointMake(self.frame.size.width / 3, CGRectGetMidY(self.frame))
@@ -111,8 +187,9 @@ class GameScene: SKScene {
         // ground physics
         let groundPhysicsContainer = SKNode()
         groundPhysicsContainer.position = CGPointMake(0, groundTex.size().height)
-        groundPhysicsContainer.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(self.frame.size.width, groundTex.size().height * 2))
+        groundPhysicsContainer.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(self.frame.size.width * 2, groundTex.size().height * 2))
         groundPhysicsContainer.physicsBody.dynamic = false
+        groundPhysicsContainer.physicsBody.categoryBitMask = ColliderType.Ground.toRaw()
         self.addChild(groundPhysicsContainer)
 
         // background
@@ -135,7 +212,14 @@ class GameScene: SKScene {
             self.addChild(sprite)
         }
 
-        self.runAction(SKAction.repeatActionForever(SKAction.playSoundFileNamed("maintheme.mp3", waitForCompletion: true)))
+        // enemy
+        let spawnEnemy = SKAction.runBlock(self.spawnEnemy)
+        let delay = SKAction.waitForDuration(2.0)
+        let spawnThenDelay = SKAction.sequence([spawnEnemy, delay])
+        let spawnThenDelayForeva = SKAction.repeatActionForever(spawnThenDelay)
+        self.runAction(spawnThenDelayForeva)
+        
+        self.runAction(SKAction.repeatActionForever(SKAction.playSoundFileNamed("maintheme.mp3", waitForCompletion: true)), withKey: "musicstart")
         
     }
     
@@ -149,4 +233,53 @@ class GameScene: SKScene {
         /* Called before each frame is rendered */
         mario.updateAnimation()
     }
+    
+    override func didSimulatePhysics() {
+        // he shouldn't rotate
+        mario.zRotation = 0
+        // pin his x-position
+        mario.position = CGPointMake(self.frame.size.width / 3, mario.position.y)
+    }
+    
+    func didBeginContact(contact: SKPhysicsContact!) {
+        println("collision!")
+        removeActionForKey("flash")
+        runAction(
+            SKAction.sequence(
+                [SKAction.repeatAction(
+                    SKAction.sequence(
+                        [SKAction.runBlock({
+                            self.backgroundColor = SKColor.redColor()
+                         }),
+                         SKAction.waitForDuration(0.05),
+                         SKAction.runBlock({
+                            self.backgroundColor = self.skyColor
+                         }),
+                         SKAction.waitForDuration(0.05)
+                        ]
+                    ), count: 4)
+                 ]
+            ), withKey: "flash"
+        )
+        // stop the music!
+        removeActionForKey("musicstart")
+        mario.die()
+        runAction(SKAction.waitForDuration(2.0))
+        mario.resetStatus()
+        mario.position = CGPointMake(self.frame.size.width / 3, CGRectGetMidY(self.frame))
+    }
+    
+    func spawnEnemy() {
+        // make the moving speed random
+        let moveSpeedMultiplier = Float(Int(arc4random_uniform(5)) + 5) / 1000.0
+        let enemy = Enemy(textureFilename: "bullet", screenWidth: Float(self.frame.size.width), speedMultiplier: moveSpeedMultiplier)
+        // make it appear in a random height above the ground
+        let randomY = (Int(rand()) % (Int(self.frame.size.height / 3))) + 70
+        println("block Y position = \(randomY)")
+        // put it off screen
+        enemy.position = CGPointMake(self.frame.width + enemy.size.width * 2, CGFloat(randomY))
+        self.addChild(enemy)
+        enemy.move()
+    }
+    
 }
