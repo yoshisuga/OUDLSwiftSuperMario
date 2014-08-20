@@ -7,6 +7,7 @@
 //
 
 import SpriteKit
+import AVFoundation
 
 enum PlayerAction: String {
     case RUNNING = "running"
@@ -76,18 +77,19 @@ class Player: SKSpriteNode {
     
     func die() {
         removeActionForKey(PlayerAction.DYING.toRaw())
-        physicsBody.collisionBitMask = ColliderType.Nothing.toRaw()
-        let moveUp = SKAction.moveByX(0, y: 20.0, duration: 1.0)
-        let fallDown = SKAction.moveToY(-20, duration: 2.0)
+        let moveUp = SKAction.moveByX(0, y: 40.0, duration: 0.2)
+        let fallDown = SKAction.moveToY(-20, duration: 0.8)
         // play death animation
-        runAction(SKAction.animateWithTextures([SKTexture(imageNamed: "death")], timePerFrame: 0.1), withKey: PlayerAction.DYING.toRaw())
+        runAction(
+            SKAction.repeatActionForever(
+                SKAction.animateWithTextures([SKTexture(imageNamed: "death")], timePerFrame: 0.1)
+            ),
+            withKey: PlayerAction.DYING.toRaw())
         // play sound
-        let deathSound = SKAction.playSoundFileNamed("die.wav", waitForCompletion: false)
-        runAction(SKAction.sequence([deathSound, SKAction.waitForDuration(0.5)]))
-        // disable collisions
+        runAction(SKAction.playSoundFileNamed("die.wav", waitForCompletion: false))
         
-        // move
-        runAction(SKAction.sequence([moveUp, fallDown]))
+        runAction(SKAction.sequence([SKAction.waitForDuration(1.0),
+            moveUp, fallDown]))
     }
     
     func resetStatus() {
@@ -145,8 +147,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var mario: Player!
     
-    
-    var moveBlockAndRemove: SKAction!
+    var audioPlayer: AVAudioPlayer!
     
     let skyColor = UIColor(red: 107.0 / 255.0, green: 140.0 / 255.0, blue: 1.0, alpha: 1.0)
     
@@ -219,7 +220,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let spawnThenDelayForeva = SKAction.repeatActionForever(spawnThenDelay)
         self.runAction(spawnThenDelayForeva)
         
-        self.runAction(SKAction.repeatActionForever(SKAction.playSoundFileNamed("maintheme.mp3", waitForCompletion: true)), withKey: "musicstart")
+        let music = NSURL(fileURLWithPath: NSBundle.mainBundle().pathForResource("maintheme", ofType: "mp3"))
+        println(music)
+        AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback, error: nil)
+        AVAudioSession.sharedInstance().setActive(true, error: nil)
+        var error:NSError?
+        audioPlayer = AVAudioPlayer(contentsOfURL: music, error: &error)
+        audioPlayer.prepareToPlay()
+        audioPlayer.play()
         
     }
     
@@ -261,12 +269,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                  ]
             ), withKey: "flash"
         )
-        // stop the music!
-        removeActionForKey("musicstart")
-        mario.die()
-        runAction(SKAction.waitForDuration(2.0))
-        mario.resetStatus()
-        mario.position = CGPointMake(self.frame.size.width / 3, CGRectGetMidY(self.frame))
+        playerDeath()
     }
     
     func spawnEnemy() {
@@ -280,6 +283,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         enemy.position = CGPointMake(self.frame.width + enemy.size.width * 2, CGFloat(randomY))
         self.addChild(enemy)
         enemy.move()
+    }
+    
+    func playerDeath() {
+        let modifyPhysics = {
+            () -> () in
+            // disable physics
+            self.physicsWorld.gravity = CGVectorMake(0,0)
+            // don't collide and detect collisions anymore
+            self.mario.physicsBody.collisionBitMask = ColliderType.Nothing.toRaw()
+            self.mario.physicsBody.contactTestBitMask = ColliderType.Nothing.toRaw()
+        }
+        let modAction = SKAction.runBlock(modifyPhysics)
+        let playerDie = SKAction.runBlock(mario.die)
+        audioPlayer.stop()
+        runAction(SKAction.sequence([modAction, playerDie]))
     }
     
 }
