@@ -53,14 +53,14 @@ class Player: SKSpriteNode {
         setScale(2.0)
 
         physicsBody = SKPhysicsBody(circleOfRadius: self.size.height / 2)
-        physicsBody.dynamic = true
-        physicsBody.angularDamping = 0.0
+        physicsBody?.dynamic = true
+        physicsBody?.angularDamping = 0.0
 
-        physicsBody.categoryBitMask = ColliderType.Mario.toRaw()
-        physicsBody.collisionBitMask = ColliderType.Ground.toRaw() | ColliderType.Enemy.toRaw()
-        physicsBody.contactTestBitMask = ColliderType.Enemy.toRaw()
+        physicsBody?.categoryBitMask = ColliderType.Mario.rawValue
+        physicsBody?.collisionBitMask = ColliderType.Ground.rawValue | ColliderType.Enemy.rawValue
+        physicsBody?.contactTestBitMask = ColliderType.Enemy.rawValue
         
-        self.runAction(runningAction, withKey: PlayerAction.RUNNING.toRaw())
+        self.runAction(runningAction, withKey: PlayerAction.RUNNING.rawValue)
 
         println("mario size = \(self.size) , position = \(self.position.x),\(self.position.y)")
     }
@@ -70,13 +70,13 @@ class Player: SKSpriteNode {
         if !isJumping() {
             let jumpSound = SKAction.playSoundFileNamed("jump.wav", waitForCompletion: true)
             self.runAction(jumpSound)
-            self.runAction(jumpingAction, withKey: PlayerAction.JUMPING.toRaw())
-            self.physicsBody.applyImpulse(CGVectorMake(0,16))
+            self.runAction(jumpingAction, withKey: PlayerAction.JUMPING.rawValue)
+            self.physicsBody?.applyImpulse(CGVectorMake(0,16))
         }
     }
     
     func die() {
-        removeActionForKey(PlayerAction.DYING.toRaw())
+        removeActionForKey(PlayerAction.DYING.rawValue)
         let moveUp = SKAction.moveByX(0, y: 40.0, duration: 0.2)
         let fallDown = SKAction.moveToY(-20, duration: 0.8)
         // play death animation
@@ -84,7 +84,7 @@ class Player: SKSpriteNode {
             SKAction.repeatActionForever(
                 SKAction.animateWithTextures([SKTexture(imageNamed: "death")], timePerFrame: 0.1)
             ),
-            withKey: PlayerAction.DYING.toRaw())
+            withKey: PlayerAction.DYING.rawValue)
         // play sound
         runAction(SKAction.playSoundFileNamed("die.wav", waitForCompletion: false))
         
@@ -93,19 +93,21 @@ class Player: SKSpriteNode {
     }
     
     func resetStatus() {
-        removeActionForKey(PlayerAction.DYING.toRaw())
-        removeActionForKey(PlayerAction.JUMPING.toRaw())
-        physicsBody.collisionBitMask = ColliderType.Ground.toRaw() | ColliderType.Enemy.toRaw()
-        runAction(runningAction, withKey: PlayerAction.RUNNING.toRaw())
+        removeActionForKey(PlayerAction.DYING.rawValue)
+        removeActionForKey(PlayerAction.JUMPING.rawValue)
+        physicsBody?.collisionBitMask = ColliderType.Ground.rawValue | ColliderType.Enemy.rawValue
+        runAction(SKAction.moveTo(CGPointMake(self.frame.size.width / 3, CGRectGetMidY(self.frame)), duration: 1.0)
+            )
+        runAction(runningAction, withKey: PlayerAction.RUNNING.rawValue)
     }
     
     func isJumping() -> Bool {
-        return physicsBody.velocity.dy != 0.0
+        return physicsBody?.velocity.dy != 0.0
     }
     
     func updateAnimation() {
         if !isJumping() {
-            self.removeActionForKey(PlayerAction.JUMPING.toRaw())
+            self.removeActionForKey(PlayerAction.JUMPING.rawValue)
         }
     }
 }
@@ -130,10 +132,10 @@ class Enemy: SKSpriteNode {
         moveAndRemoveAction = SKAction.sequence([move, remove])
 
         physicsBody = SKPhysicsBody(rectangleOfSize: self.size)
-        physicsBody.dynamic = false
-        physicsBody.categoryBitMask = ColliderType.Enemy.toRaw()
-        physicsBody.collisionBitMask = ColliderType.Mario.toRaw()
-        physicsBody.contactTestBitMask = ColliderType.Mario.toRaw()
+        physicsBody?.dynamic = false
+        physicsBody?.categoryBitMask = ColliderType.Enemy.rawValue
+        physicsBody?.collisionBitMask = ColliderType.Mario.rawValue
+        physicsBody?.contactTestBitMask = ColliderType.Mario.rawValue
     }
     
     func move() {
@@ -189,8 +191,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let groundPhysicsContainer = SKNode()
         groundPhysicsContainer.position = CGPointMake(0, groundTex.size().height)
         groundPhysicsContainer.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(self.frame.size.width * 2, groundTex.size().height * 2))
-        groundPhysicsContainer.physicsBody.dynamic = false
-        groundPhysicsContainer.physicsBody.categoryBitMask = ColliderType.Ground.toRaw()
+        groundPhysicsContainer.physicsBody?.dynamic = false
+        groundPhysicsContainer.physicsBody?.categoryBitMask = ColliderType.Ground.rawValue
         self.addChild(groundPhysicsContainer)
 
         // background
@@ -220,7 +222,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let spawnThenDelayForeva = SKAction.repeatActionForever(spawnThenDelay)
         self.runAction(spawnThenDelayForeva)
         
-        let music = NSURL(fileURLWithPath: NSBundle.mainBundle().pathForResource("maintheme", ofType: "mp3"))
+        let music = NSURL(fileURLWithPath: NSBundle.mainBundle().pathForResource("maintheme", ofType: "mp3")!)
         println(music)
         AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayback, error: nil)
         AVAudioSession.sharedInstance().setActive(true, error: nil)
@@ -291,13 +293,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // disable physics
             self.physicsWorld.gravity = CGVectorMake(0,0)
             // don't collide and detect collisions anymore
-            self.mario.physicsBody.collisionBitMask = ColliderType.Nothing.toRaw()
-            self.mario.physicsBody.contactTestBitMask = ColliderType.Nothing.toRaw()
+            self.mario.physicsBody?.collisionBitMask = ColliderType.Nothing.rawValue
+            self.mario.physicsBody?.contactTestBitMask = ColliderType.Nothing.rawValue
         }
         let modAction = SKAction.runBlock(modifyPhysics)
         let playerDie = SKAction.runBlock(mario.die)
+        let resetAction = SKAction.runBlock(mario.resetStatus)
+        let delay = SKAction.waitForDuration(3.0)
         audioPlayer.stop()
-        runAction(SKAction.sequence([modAction, playerDie]))
+        runAction(SKAction.sequence([modAction, playerDie, delay, resetAction]))
     }
     
 }
